@@ -30,7 +30,7 @@ app.use((req, res, next) => {
 // ============================================================================
 
 const pool = new Pool({
-  connectionString: process.env.DATABASE_URL || 'postgresql://governance:governance123@postgres:5432/governance_db',
+  connectionString: process.env.DATABASE_URL || 'postgresql://governance:governance123@postgres:5432/governance',
   max: 20,
   idleTimeoutMillis: 30000,
   connectionTimeoutMillis: 2000,
