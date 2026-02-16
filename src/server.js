@@ -1,6 +1,7 @@
 // src/server.js
 // Data Governance Platform - Main Application Server
 
+const path = require('path'); //added may be not needed
 const express = require('express');
 const { Pool } = require('pg');
 const cors = require('cors');
@@ -400,6 +401,23 @@ app.use((req, res) => {
     path: req.path
   });
 });
+//CHANGES INTRODUCED BY INTEGRATION OF CONTRACT BUILDER
+/**
+ * GET /contract-builder
+ * Serves the Data Contract Builder single-page UI
+ */
+app.get('/contract-builder', (req, res) => {
+  res.sendFile(path.join(__dirname, '..', 'public', 'views', 'contract-builder.html'));
+});
+
+/**
+ * GET / (root redirect to builder)
+ * Redirect root to the contract builder for convenience
+ */
+app.get('/', (req, res) => {
+  res.redirect('/contract-builder');
+});
+//CHANGES INTRODUCED BY INTEGRATION OF CONTRACT BUILDER
 
 /**
  * Global error handler

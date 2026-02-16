@@ -483,13 +483,32 @@ function addField(modelId, data) {
 }
 
 // ===================================================================
-// OUTPUT MANAGEMENT
+// OUTPUT MANAGEMENT (WITH MODEL INHERITANCE)
 // ===================================================================
 function addOutput(data) {
   outputCounter++;
   const id = outputCounter;
   const d = data || { id: '', name: '', modelId: '', description: '' };
   const container = document.getElementById('outputs-container');
+
+  // Build options from current models
+  const modelOptions = [];
+  document.querySelectorAll('[id^="model-"][id$="-id"]').forEach(el => {
+    const mid = el.id.match(/model-(\d+)-id/);
+    if (!mid) return;
+    const n = mid[1];
+    const modelId = el.value.trim();
+    const modelName = document.getElementById(`model-${n}-name`).value.trim();
+    if (modelId) {
+      modelOptions.push({ id: modelId, name: modelName, index: n });
+    }
+  });
+
+  const optionsHtml = modelOptions.length
+    ? '<option value="">— select a model —</option>' + modelOptions.map(m =>
+        `<option value="${m.id}" data-index="${m.index}" ${d.modelId === m.id ? 'selected' : ''}>${m.id} (${m.name})</option>`
+      ).join('')
+    : '<option value="">— define a model first —</option>';
 
   const div = document.createElement('div');
   div.id = 'output-' + id;
@@ -500,16 +519,48 @@ function addOutput(data) {
       <button class="btn btn-sm btn-outline" style="color:var(--red)" onclick="document.getElementById('output-${id}').remove();updatePreview()">✕ Remove</button>
     </div>
     <div class="form-row">
-      <div class="form-group"><label>Output ID <span class="req">*</span></label><input type="text" id="output-${id}-id" value="${d.id}" placeholder="output_rest_api"></div>
-      <div class="form-group"><label>Output Name <span class="req">*</span></label><input type="text" id="output-${id}-name" value="${d.name}" placeholder="REST API"></div>
+      <div class="form-group">
+        <label>Output ID <span class="req">*</span></label>
+        <input type="text" id="output-${id}-id" value="${d.id}" placeholder="output_rest_api">
+      </div>
+      <div class="form-group">
+        <label>Output Name <span class="req">*</span></label>
+        <input type="text" id="output-${id}-name" value="${d.name}" placeholder="REST API">
+      </div>
     </div>
     <div class="form-row">
-      <div class="form-group"><label>Model ID <span class="req">*</span></label><input type="text" id="output-${id}-modelId" value="${d.modelId}" placeholder="order_model"></div>
-      <div class="form-group"><label>Description</label><input type="text" id="output-${id}-desc" value="${d.description || ''}" placeholder="Describe this output port..."></div>
+      <div class="form-group">
+        <label>Model <span class="req">*</span></label>
+        <select id="output-${id}-modelId" onchange="inheritModelDescription(${id})">
+          ${optionsHtml}
+        </select>
+        <span class="hint">Select the model this output port exposes</span>
+      </div>
+      <div class="form-group">
+        <label>Description</label>
+        <input type="text" id="output-${id}-desc" value="${d.description || ''}" placeholder="Describe this output port...">
+      </div>
     </div>
   `;
   container.appendChild(div);
   listenForChanges();
+}
+
+function inheritModelDescription(outputId) {
+  const selectEl = document.getElementById(`output-${outputId}-modelId`);
+  const selectedOption = selectEl.options[selectEl.selectedIndex];
+  const modelIndex = selectedOption.dataset.index;
+
+  if (!modelIndex) return;
+
+  const modelDesc = document.getElementById(`model-${modelIndex}-desc`).value.trim();
+  const outDescInput = document.getElementById(`output-${outputId}-desc`);
+
+  // Only inherit if output description is empty
+  if (modelDesc && outDescInput && !outDescInput.value.trim()) {
+    outDescInput.value = modelDesc;
+    updatePreview();
+  }
 }
 
 // ===================================================================
@@ -560,10 +611,11 @@ function buildContract() {
     const oid = el.id.match(/output-(\d+)-id/);
     if (!oid) return;
     const n = oid[1];
+    const modelIdSelect = document.getElementById('output-' + n + '-modelId');
     contract.outputs.push({
       id: el.value.trim(),
       name: document.getElementById('output-' + n + '-name').value.trim(),
-      modelId: document.getElementById('output-' + n + '-modelId').value.trim(),
+      modelId: modelIdSelect ? modelIdSelect.value.trim() : '',
       description: document.getElementById('output-' + n + '-desc').value.trim() || null
     });
   });
@@ -713,7 +765,7 @@ function runValidation() {
 }
 
 // ===================================================================
-// SUBMIT / VALIDATE API CALLS
+// SUBMIT / VALIDATE API CALLS (WITH IMPROVED ERROR HANDLING)
 // ===================================================================
 async function submitContract() {
   const contract = buildContract();
@@ -734,7 +786,11 @@ async function submitContract() {
     if (data.success) {
       showToast('success', '🎉 Contract published successfully! ID: ' + (data.contract?.contractId || 'N/A'));
     } else {
-      showToast('error', 'Validation errors: ' + (data.errors || []).join(', '));
+      const errorMsg =
+        (data.errors && data.errors.length)
+          ? data.errors.join(', ')
+          : (data.error || 'Unknown error');
+      showToast('error', 'Publish failed: ' + errorMsg);
     }
   } catch (err) {
     showToast('error', 'Network error: ' + err.message + '. Is the platform running on localhost:3000?');
@@ -760,7 +816,11 @@ async function validateOnly() {
     if (data.success) {
       showToast('success', '✅ Contract passed server-side validation!');
     } else {
-      showToast('error', 'Server validation errors: ' + (data.errors || []).join(', '));
+      const errorMsg =
+        (data.errors && data.errors.length)
+          ? data.errors.join(', ')
+          : (data.error || 'Unknown error');
+      showToast('error', 'Server validation errors: ' + errorMsg);
     }
   } catch (err) {
     showToast('info', 'Could not reach API. Running client-side validation only.');
