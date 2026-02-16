@@ -1,0 +1,948 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Data Contract Builder — Governance Platform</title>
+  <style>
+    /* ===== RESET & BASE ===== */
+    *, *::before, *::after { margin:0; padding:0; box-sizing:border-box; }
+    :root {
+      --navy: #1a365d; --navy-light: #2a4a7f; --blue: #3182ce;
+      --green: #38a169; --green-light: #c6f6d5; --red: #e53e3e; --red-light: #fed7d7;
+      --orange: #dd6b20; --orange-light: #feebc8;
+      --gray-50: #f7fafc; --gray-100: #edf2f7; --gray-200: #e2e8f0;
+      --gray-300: #cbd5e0; --gray-400: #a0aec0; --gray-500: #718096;
+      --gray-600: #4a5568; --gray-700: #2d3748; --gray-800: #1a202c;
+      --shadow: 0 1px 3px rgba(0,0,0,.12), 0 1px 2px rgba(0,0,0,.06);
+      --shadow-md: 0 4px 6px rgba(0,0,0,.1), 0 2px 4px rgba(0,0,0,.06);
+      --shadow-lg: 0 10px 15px rgba(0,0,0,.1), 0 4px 6px rgba(0,0,0,.05);
+      --radius: 8px;
+    }
+    body { font-family: -apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif; background:var(--gray-50); color:var(--gray-700); line-height:1.5; }
+    a { color:var(--blue); text-decoration:none; }
+    a:hover { text-decoration:underline; }
+
+    /* ===== LAYOUT ===== */
+    header { background:linear-gradient(135deg,var(--navy),var(--navy-light)); color:#fff; padding:18px 32px; display:flex; align-items:center; justify-content:space-between; position:sticky; top:0; z-index:100; box-shadow:var(--shadow-md); }
+    header h1 { font-size:20px; font-weight:700; letter-spacing:-.3px; }
+    header .subtitle { font-size:13px; opacity:.8; margin-top:2px; }
+    header .status-bar { display:flex; gap:14px; font-size:12px; align-items:center; }
+    header .status-dot { width:8px; height:8px; border-radius:50%; display:inline-block; margin-right:4px; }
+    header .status-dot.ok { background:#68d391; } header .status-dot.err { background:#fc8181; }
+
+    .app { display:grid; grid-template-columns:260px 1fr 380px; min-height:calc(100vh - 60px); }
+    @media(max-width:1100px){ .app{ grid-template-columns:1fr; } .sidebar,.preview-panel{ display:none; } }
+
+    /* ===== SIDEBAR ===== */
+    .sidebar { background:#fff; border-right:1px solid var(--gray-200); padding:20px 16px; overflow-y:auto; }
+    .sidebar h3 { font-size:11px; text-transform:uppercase; letter-spacing:.8px; color:var(--gray-400); margin:18px 0 8px; }
+    .sidebar h3:first-child { margin-top:0; }
+    .sidebar .nav-item { display:flex; align-items:center; gap:10px; padding:9px 12px; border-radius:6px; cursor:pointer; font-size:14px; color:var(--gray-600); transition:all .15s; }
+    .sidebar .nav-item:hover { background:var(--gray-100); color:var(--gray-800); }
+    .sidebar .nav-item.active { background:#ebf4ff; color:var(--blue); font-weight:600; }
+    .sidebar .nav-item .icon { width:18px; text-align:center; }
+
+    /* ===== MAIN FORM ===== */
+    .main { padding:28px 32px; overflow-y:auto; max-height:calc(100vh - 60px); }
+    .main h2 { font-size:22px; color:var(--gray-800); margin-bottom:6px; }
+    .main .page-desc { font-size:14px; color:var(--gray-500); margin-bottom:24px; }
+
+    .card { background:#fff; border:1px solid var(--gray-200); border-radius:var(--radius); padding:24px; margin-bottom:20px; box-shadow:var(--shadow); }
+    .card-header { display:flex; justify-content:space-between; align-items:center; margin-bottom:16px; }
+    .card-header h3 { font-size:16px; color:var(--gray-800); }
+    .card-header .badge { font-size:11px; padding:2px 8px; border-radius:10px; font-weight:600; }
+    .badge-required { background:var(--red-light); color:var(--red); }
+    .badge-optional { background:var(--orange-light); color:var(--orange); }
+
+    .form-row { display:grid; grid-template-columns:1fr 1fr; gap:16px; margin-bottom:14px; }
+    .form-row.full { grid-template-columns:1fr; }
+    .form-group { display:flex; flex-direction:column; }
+    .form-group label { font-size:13px; font-weight:600; color:var(--gray-600); margin-bottom:4px; }
+    .form-group label .req { color:var(--red); }
+    .form-group input, .form-group select, .form-group textarea {
+      padding:9px 12px; border:1px solid var(--gray-300); border-radius:6px; font-size:14px; color:var(--gray-700); transition:border .15s;
+    }
+    .form-group input:focus, .form-group select:focus, .form-group textarea:focus { outline:none; border-color:var(--blue); box-shadow:0 0 0 3px rgba(49,130,206,.15); }
+    .form-group textarea { resize:vertical; min-height:60px; }
+    .form-group .hint { font-size:11px; color:var(--gray-400); margin-top:3px; }
+
+    /* ===== FIELDS TABLE ===== */
+    .fields-table { width:100%; border-collapse:collapse; font-size:13px; }
+    .fields-table th { text-align:left; padding:8px 10px; background:var(--gray-100); color:var(--gray-600); font-weight:600; font-size:11px; text-transform:uppercase; letter-spacing:.5px; border-bottom:2px solid var(--gray-200); }
+    .fields-table td { padding:6px 10px; border-bottom:1px solid var(--gray-100); vertical-align:middle; }
+    .fields-table td input, .fields-table td select { width:100%; padding:6px 8px; border:1px solid var(--gray-200); border-radius:4px; font-size:13px; }
+    .fields-table td input:focus, .fields-table td select:focus { border-color:var(--blue); outline:none; }
+    .fields-table .row-actions { display:flex; gap:4px; }
+    .fields-table .row-actions button { background:none; border:none; cursor:pointer; padding:4px; border-radius:4px; font-size:14px; }
+    .fields-table .row-actions button:hover { background:var(--gray-100); }
+
+    /* ===== BUTTONS ===== */
+    .btn { display:inline-flex; align-items:center; gap:6px; padding:9px 18px; border:none; border-radius:6px; font-size:14px; font-weight:600; cursor:pointer; transition:all .15s; }
+    .btn-primary { background:var(--blue); color:#fff; } .btn-primary:hover { background:#2b6cb0; }
+    .btn-success { background:var(--green); color:#fff; } .btn-success:hover { background:#2f855a; }
+    .btn-outline { background:#fff; border:1px solid var(--gray-300); color:var(--gray-600); } .btn-outline:hover { background:var(--gray-100); }
+    .btn-danger { background:var(--red); color:#fff; } .btn-danger:hover { background:#c53030; }
+    .btn-sm { padding:5px 12px; font-size:12px; }
+    .btn-group { display:flex; gap:10px; margin-top:20px; flex-wrap:wrap; }
+
+    /* ===== PREVIEW PANEL ===== */
+    .preview-panel { background:var(--gray-800); color:var(--gray-300); padding:20px; overflow-y:auto; max-height:calc(100vh - 60px); font-size:13px; }
+    .preview-panel h3 { color:#fff; font-size:14px; margin-bottom:12px; display:flex; align-items:center; gap:8px; }
+    .preview-panel pre { background:var(--gray-700); padding:16px; border-radius:6px; overflow-x:auto; font-family:'Fira Code','Cascadia Code',Consolas,monospace; font-size:12px; line-height:1.6; white-space:pre-wrap; color:#e2e8f0; }
+    .preview-tabs { display:flex; gap:0; margin-bottom:14px; border-bottom:1px solid var(--gray-600); }
+    .preview-tab { padding:8px 16px; cursor:pointer; font-size:12px; font-weight:600; color:var(--gray-400); border-bottom:2px solid transparent; transition:all .15s; }
+    .preview-tab.active { color:#fff; border-bottom-color:var(--blue); }
+    .preview-tab:hover { color:var(--gray-200); }
+
+    /* ===== TOAST / ALERTS ===== */
+    .toast-container { position:fixed; top:80px; right:24px; z-index:200; display:flex; flex-direction:column; gap:8px; }
+    .toast { padding:12px 20px; border-radius:8px; font-size:13px; font-weight:500; box-shadow:var(--shadow-lg); animation:slideIn .3s ease; min-width:280px; display:flex; align-items:center; gap:8px; }
+    .toast-success { background:var(--green-light); color:#22543d; border-left:4px solid var(--green); }
+    .toast-error { background:var(--red-light); color:#742a2a; border-left:4px solid var(--red); }
+    .toast-info { background:#bee3f8; color:#2a4365; border-left:4px solid var(--blue); }
+    @keyframes slideIn { from{transform:translateX(100%);opacity:0} to{transform:translateX(0);opacity:1} }
+
+    /* ===== VALIDATION ===== */
+    .validation-panel { margin-top:16px; }
+    .val-item { display:flex; align-items:flex-start; gap:8px; padding:6px 0; font-size:13px; }
+    .val-icon { font-size:16px; flex-shrink:0; margin-top:1px; }
+    .val-pass { color:var(--green); } .val-fail { color:var(--red); } .val-warn { color:var(--orange); }
+
+    /* ===== MODAL ===== */
+    .modal-overlay { display:none; position:fixed; inset:0; background:rgba(0,0,0,.5); z-index:300; align-items:center; justify-content:center; }
+    .modal-overlay.show { display:flex; }
+    .modal { background:#fff; border-radius:12px; padding:28px; max-width:560px; width:90%; max-height:80vh; overflow-y:auto; box-shadow:var(--shadow-lg); }
+    .modal h3 { font-size:18px; margin-bottom:16px; color:var(--gray-800); }
+
+    /* ===== COMPLIANCE CHIPS ===== */
+    .chip-group { display:flex; flex-wrap:wrap; gap:8px; margin-top:4px; }
+    .chip { padding:6px 14px; border-radius:20px; font-size:12px; font-weight:600; cursor:pointer; border:2px solid var(--gray-300); background:#fff; color:var(--gray-600); transition:all .15s; user-select:none; }
+    .chip.selected { border-color:var(--blue); background:#ebf4ff; color:var(--blue); }
+    .chip:hover { border-color:var(--blue); }
+
+    /* ===== STEP INDICATOR ===== */
+    .steps { display:flex; gap:0; margin-bottom:28px; }
+    .step { flex:1; text-align:center; padding:12px 8px; position:relative; }
+    .step::after { content:''; position:absolute; top:22px; right:-50%; width:100%; height:2px; background:var(--gray-200); z-index:0; }
+    .step:last-child::after { display:none; }
+    .step .step-num { width:32px; height:32px; border-radius:50%; display:inline-flex; align-items:center; justify-content:center; font-size:13px; font-weight:700; background:var(--gray-200); color:var(--gray-500); position:relative; z-index:1; transition:all .2s; }
+    .step.active .step-num { background:var(--blue); color:#fff; }
+    .step.done .step-num { background:var(--green); color:#fff; }
+    .step.done::after { background:var(--green); }
+    .step .step-label { display:block; font-size:11px; color:var(--gray-500); margin-top:6px; font-weight:600; }
+    .step.active .step-label { color:var(--blue); }
+
+    /* ===== SECTION VISIBILITY ===== */
+    .section { display:none; } .section.visible { display:block; }
+
+    /* ===== SCROLLBAR ===== */
+    ::-webkit-scrollbar { width:6px; } ::-webkit-scrollbar-track { background:transparent; }
+    ::-webkit-scrollbar-thumb { background:var(--gray-300); border-radius:3px; }
+    .preview-panel::-webkit-scrollbar-thumb { background:var(--gray-600); }
+  </style>
+</head>
+<body>
+
+<!-- ======================= HEADER ======================= -->
+<header>
+  <div>
+    <h1>🏛️ Data Contract Builder</h1>
+    <div class="subtitle">Governance Platform · ODCS v3.0.1 Compliant</div>
+  </div>
+  <div class="status-bar">
+    <span><span class="status-dot" id="dot-api"></span>API</span>
+    <span><span class="status-dot" id="dot-opa"></span>OPA</span>
+    <span><span class="status-dot" id="dot-registry"></span>Registry</span>
+    <span><span class="status-dot" id="dot-db"></span>Database</span>
+  </div>
+</header>
+
+<!-- ======================= APP GRID ======================= -->
+<div class="app">
+
+  <!-- ===== SIDEBAR ===== -->
+  <nav class="sidebar">
+    <h3>Navigation</h3>
+    <div class="nav-item active" onclick="showSection('create')"><span class="icon">📝</span> Create Contract</div>
+    <div class="nav-item" onclick="showSection('list')"><span class="icon">📋</span> My Contracts</div>
+    <div class="nav-item" onclick="showSection('validate')"><span class="icon">✅</span> Validate Contract</div>
+
+    <h3>Resources</h3>
+    <div class="nav-item" onclick="window.open('http://localhost:8080','_blank')"><span class="icon">📦</span> Apicurio Registry</div>
+    <div class="nav-item" onclick="window.open('http://localhost:8181','_blank')"><span class="icon">🛡️</span> OPA Policies</div>
+    <div class="nav-item" onclick="window.open('http://localhost:5050','_blank')"><span class="icon">🗄️</span> pgAdmin</div>
+
+    <h3>Quick Templates</h3>
+    <div class="nav-item" onclick="loadTemplate('orders')"><span class="icon">🛒</span> Orders Contract</div>
+    <div class="nav-item" onclick="loadTemplate('customer')"><span class="icon">👤</span> Customer Contract</div>
+    <div class="nav-item" onclick="loadTemplate('transactions')"><span class="icon">💳</span> Transactions Contract</div>
+    <div class="nav-item" onclick="loadTemplate('blank')"><span class="icon">📄</span> Blank Contract</div>
+  </nav>
+
+  <!-- ===== MAIN CONTENT ===== -->
+  <main class="main">
+
+    <!-- ===================== CREATE CONTRACT ===================== -->
+    <div id="section-create" class="section visible">
+      <h2>Create a New Data Contract</h2>
+      <p class="page-desc">Define your data product contract following the ODCS v3.0.1 specification. The contract will be validated, stored in PostgreSQL, and published to Apicurio Registry.</p>
+
+      <!-- Steps -->
+      <div class="steps">
+        <div class="step active" id="step-1"><span class="step-num">1</span><span class="step-label">Identity</span></div>
+        <div class="step" id="step-2"><span class="step-num">2</span><span class="step-label">Models</span></div>
+        <div class="step" id="step-3"><span class="step-num">3</span><span class="step-label">Outputs</span></div>
+        <div class="step" id="step-4"><span class="step-num">4</span><span class="step-label">SLA &amp; Compliance</span></div>
+        <div class="step" id="step-5"><span class="step-num">5</span><span class="step-label">Review</span></div>
+      </div>
+
+      <!-- STEP 1: Identity -->
+      <div id="page-1" class="card" style="display:block">
+        <div class="card-header"><h3>📋 Contract Identity (info)</h3><span class="badge badge-required">Required</span></div>
+        <div class="form-row">
+          <div class="form-group">
+            <label>Contract ID <span class="req">*</span></label>
+            <input type="text" id="info-id" placeholder="urn:datacontract:my-product-v1">
+            <span class="hint">Unique URN identifier for this data contract</span>
+          </div>
+          <div class="form-group">
+            <label>Version <span class="req">*</span></label>
+            <input type="text" id="info-version" placeholder="1.0.0" value="1.0.0">
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label>Title <span class="req">*</span></label>
+            <input type="text" id="info-title" placeholder="My Data Product Contract">
+          </div>
+          <div class="form-group">
+            <label>Owner</label>
+            <input type="text" id="info-owner" placeholder="DataEngineering">
+          </div>
+        </div>
+        <div class="form-row full">
+          <div class="form-group">
+            <label>Description</label>
+            <textarea id="info-description" placeholder="Describe the purpose and scope of this data contract..."></textarea>
+          </div>
+        </div>
+        <div class="btn-group" style="justify-content:flex-end">
+          <button class="btn btn-primary" onclick="goToStep(2)">Next: Define Models →</button>
+        </div>
+      </div>
+
+      <!-- STEP 2: Models & Fields -->
+      <div id="page-2" class="card" style="display:none">
+        <div class="card-header"><h3>🗂️ Data Models &amp; Fields</h3><span class="badge badge-required">Required</span></div>
+        <p style="font-size:13px;color:var(--gray-500);margin-bottom:16px">Define the schema models that this contract governs. Each model contains typed fields with optional constraints.</p>
+
+        <div id="models-container"></div>
+
+        <button class="btn btn-outline btn-sm" onclick="addModel()" style="margin-top:12px">+ Add Model</button>
+
+        <div class="btn-group" style="justify-content:space-between">
+          <button class="btn btn-outline" onclick="goToStep(1)">← Back</button>
+          <button class="btn btn-primary" onclick="goToStep(3)">Next: Outputs →</button>
+        </div>
+      </div>
+
+      <!-- STEP 3: Outputs -->
+      <div id="page-3" class="card" style="display:none">
+        <div class="card-header"><h3>📤 Output Ports</h3><span class="badge badge-optional">Optional</span></div>
+        <p style="font-size:13px;color:var(--gray-500);margin-bottom:16px">Define how consumers can access the data. Each output port references a model defined in step 2.</p>
+
+        <div id="outputs-container"></div>
+
+        <button class="btn btn-outline btn-sm" onclick="addOutput()" style="margin-top:12px">+ Add Output Port</button>
+
+        <div class="btn-group" style="justify-content:space-between">
+          <button class="btn btn-outline" onclick="goToStep(2)">← Back</button>
+          <button class="btn btn-primary" onclick="goToStep(4)">Next: SLA &amp; Compliance →</button>
+        </div>
+      </div>
+
+      <!-- STEP 4: SLA & Compliance -->
+      <div id="page-4" class="card" style="display:none">
+        <div class="card-header"><h3>🛡️ SLA &amp; Compliance</h3><span class="badge badge-optional">Optional</span></div>
+
+        <h4 style="font-size:14px;color:var(--gray-700);margin-bottom:10px">Service Level Agreements</h4>
+        <div class="form-row">
+          <div class="form-group">
+            <label>Availability (%)</label>
+            <input type="text" id="sla-availability" placeholder="99.9">
+          </div>
+          <div class="form-group">
+            <label>Latency (ms)</label>
+            <input type="number" id="sla-latency" placeholder="500">
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label>Freshness</label>
+            <input type="text" id="sla-freshness" placeholder="24h">
+          </div>
+          <div class="form-group">
+            <label>Retention</label>
+            <input type="text" id="sla-retention" placeholder="7 years">
+          </div>
+        </div>
+
+        <h4 style="font-size:14px;color:var(--gray-700);margin:20px 0 10px">Data Quality</h4>
+        <div class="form-row">
+          <div class="form-group">
+            <label>Completeness (%)</label>
+            <input type="number" id="quality-completeness" placeholder="99">
+          </div>
+          <div class="form-group">
+            <label>Uniqueness Field</label>
+            <input type="text" id="quality-uniqueness" placeholder="orderId">
+          </div>
+        </div>
+
+        <h4 style="font-size:14px;color:var(--gray-700);margin:20px 0 10px">Compliance Regulations</h4>
+        <div class="chip-group" id="compliance-chips">
+          <span class="chip" data-reg="GDPR" onclick="toggleChip(this)">🇪🇺 GDPR</span>
+          <span class="chip" data-reg="CCPA" onclick="toggleChip(this)">🇺🇸 CCPA</span>
+          <span class="chip" data-reg="PIPL" onclick="toggleChip(this)">🇨🇳 PIPL</span>
+          <span class="chip" data-reg="DPDPA" onclick="toggleChip(this)">🇮🇳 DPDPA</span>
+        </div>
+
+        <div class="btn-group" style="justify-content:space-between;margin-top:24px">
+          <button class="btn btn-outline" onclick="goToStep(3)">← Back</button>
+          <button class="btn btn-primary" onclick="goToStep(5)">Next: Review →</button>
+        </div>
+      </div>
+
+      <!-- STEP 5: Review & Submit -->
+      <div id="page-5" class="card" style="display:none">
+        <div class="card-header"><h3>🔍 Review &amp; Submit</h3></div>
+
+        <div class="validation-panel" id="validation-results"></div>
+
+        <div class="btn-group" style="justify-content:space-between;margin-top:20px">
+          <button class="btn btn-outline" onclick="goToStep(4)">← Back</button>
+          <div style="display:flex;gap:10px">
+            <button class="btn btn-outline" onclick="validateOnly()">✅ Validate Only</button>
+            <button class="btn btn-success" onclick="submitContract()" id="btn-submit">🚀 Publish Contract</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ===================== LIST CONTRACTS ===================== -->
+    <div id="section-list" class="section">
+      <h2>Existing Data Contracts</h2>
+      <p class="page-desc">Browse all contracts stored in the governance database and published to Apicurio Registry.</p>
+      <div class="card">
+        <div class="card-header"><h3>📋 Contracts</h3><button class="btn btn-sm btn-outline" onclick="loadContracts()">↻ Refresh</button></div>
+        <div id="contracts-list" style="font-size:13px;color:var(--gray-500)">Click Refresh to load contracts from the API.</div>
+      </div>
+    </div>
+
+    <!-- ===================== VALIDATE SECTION ===================== -->
+    <div id="section-validate" class="section">
+      <h2>Validate Contract JSON</h2>
+      <p class="page-desc">Paste raw ODCS JSON to validate it against the platform's contract-validator without publishing.</p>
+      <div class="card">
+        <div class="form-row full">
+          <div class="form-group">
+            <label>Contract JSON</label>
+            <textarea id="validate-json" rows="16" style="font-family:monospace;font-size:12px" placeholder='Paste your ODCS v3.0.1 contract JSON here...'></textarea>
+          </div>
+        </div>
+        <div class="btn-group">
+          <button class="btn btn-primary" onclick="validatePasted()">✅ Validate</button>
+        </div>
+        <div id="validate-results" class="validation-panel" style="margin-top:16px"></div>
+      </div>
+    </div>
+
+  </main>
+
+  <!-- ===== LIVE PREVIEW PANEL ===== -->
+  <aside class="preview-panel">
+    <h3>📄 Live Contract Preview</h3>
+    <div class="preview-tabs">
+      <div class="preview-tab active" onclick="switchPreviewTab('json',this)">JSON</div>
+      <div class="preview-tab" onclick="switchPreviewTab('yaml',this)">YAML-like</div>
+      <div class="preview-tab" onclick="switchPreviewTab('curl',this)">cURL</div>
+    </div>
+    <pre id="preview-content">{ /* Start filling the form to see a live preview */ }</pre>
+  </aside>
+
+</div>
+
+<!-- ======================= TOAST ======================= -->
+<div class="toast-container" id="toast-container"></div>
+
+<!-- ======================= MODAL ======================= -->
+<div class="modal-overlay" id="modal-overlay">
+  <div class="modal" id="modal-body"></div>
+</div>
+
+<script>
+// ===================================================================
+// STATE
+// ===================================================================
+const API_BASE = 'http://localhost:3000';
+let currentStep = 1;
+let modelCounter = 0;
+let outputCounter = 0;
+let activePreviewTab = 'json';
+
+// ===================================================================
+// NAVIGATION
+// ===================================================================
+function showSection(name) {
+  document.querySelectorAll('.section').forEach(s => s.classList.remove('visible'));
+  document.getElementById('section-' + name).classList.add('visible');
+  document.querySelectorAll('.sidebar .nav-item').forEach(n => n.classList.remove('active'));
+  event.currentTarget.classList.add('active');
+}
+
+function goToStep(n) {
+  currentStep = n;
+  for (let i = 1; i <= 5; i++) {
+    document.getElementById('page-' + i).style.display = i === n ? 'block' : 'none';
+    const step = document.getElementById('step-' + i);
+    step.className = 'step' + (i < n ? ' done' : '') + (i === n ? ' active' : '');
+  }
+  if (n === 5) runValidation();
+  updatePreview();
+}
+
+// ===================================================================
+// MODEL MANAGEMENT
+// ===================================================================
+function addModel(data) {
+  modelCounter++;
+  const id = modelCounter;
+  const d = data || { id: '', name: '', description: '', fields: [{ name: '', type: 'string', required: false, description: '', pii: false }] };
+  const container = document.getElementById('models-container');
+
+  const div = document.createElement('div');
+  div.id = 'model-' + id;
+  div.style.cssText = 'border:1px solid var(--gray-200);border-radius:8px;padding:16px;margin-bottom:14px;background:var(--gray-50)';
+  div.innerHTML = `
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
+      <strong style="font-size:14px;color:var(--gray-700)">Model #${id}</strong>
+      <button class="btn btn-sm btn-outline" style="color:var(--red)" onclick="removeModel(${id})">✕ Remove</button>
+    </div>
+    <div class="form-row">
+      <div class="form-group"><label>Model ID <span class="req">*</span></label><input type="text" id="model-${id}-id" value="${d.id}" placeholder="order_model"></div>
+      <div class="form-group"><label>Model Name <span class="req">*</span></label><input type="text" id="model-${id}-name" value="${d.name}" placeholder="Order"></div>
+    </div>
+    <div class="form-row full">
+      <div class="form-group"><label>Description</label><input type="text" id="model-${id}-desc" value="${d.description || ''}" placeholder="Describe this model..."></div>
+    </div>
+    <div style="margin-top:10px;overflow-x:auto">
+      <table class="fields-table" id="model-${id}-fields">
+        <thead><tr><th>Field Name</th><th>Type</th><th>Required</th><th>PII</th><th>Description</th><th style="width:60px"></th></tr></thead>
+        <tbody></tbody>
+      </table>
+    </div>
+    <button class="btn btn-sm btn-outline" onclick="addField(${id})" style="margin-top:8px">+ Add Field</button>
+  `;
+  container.appendChild(div);
+
+  (d.fields || []).forEach(f => addField(id, f));
+  if (!d.fields || d.fields.length === 0) addField(id);
+  listenForChanges();
+}
+
+function removeModel(id) {
+  const el = document.getElementById('model-' + id);
+  if (el) el.remove();
+  updatePreview();
+}
+
+function addField(modelId, data) {
+  const d = data || { name: '', type: 'string', required: false, description: '', pii: false };
+  const tbody = document.querySelector('#model-' + modelId + '-fields tbody');
+  const tr = document.createElement('tr');
+  tr.innerHTML = `
+    <td><input type="text" value="${d.name}" placeholder="field_name"></td>
+    <td><select>
+      <option value="string" ${d.type==='string'?'selected':''}>string</option>
+      <option value="integer" ${d.type==='integer'?'selected':''}>integer</option>
+      <option value="number" ${d.type==='number'?'selected':''}>number</option>
+      <option value="boolean" ${d.type==='boolean'?'selected':''}>boolean</option>
+      <option value="date" ${d.type==='date'?'selected':''}>date</option>
+      <option value="timestamp" ${d.type==='timestamp'?'selected':''}>timestamp</option>
+      <option value="array" ${d.type==='array'?'selected':''}>array</option>
+      <option value="object" ${d.type==='object'?'selected':''}>object</option>
+    </select></td>
+    <td style="text-align:center"><input type="checkbox" ${d.required?'checked':''}></td>
+    <td style="text-align:center"><input type="checkbox" ${d.pii?'checked':''}></td>
+    <td><input type="text" value="${d.description || ''}" placeholder="Description..."></td>
+    <td class="row-actions"><button onclick="this.closest('tr').remove();updatePreview()">🗑️</button></td>
+  `;
+  tbody.appendChild(tr);
+  listenForChanges();
+}
+
+// ===================================================================
+// OUTPUT MANAGEMENT
+// ===================================================================
+function addOutput(data) {
+  outputCounter++;
+  const id = outputCounter;
+  const d = data || { id: '', name: '', modelId: '', description: '' };
+  const container = document.getElementById('outputs-container');
+
+  const div = document.createElement('div');
+  div.id = 'output-' + id;
+  div.style.cssText = 'border:1px solid var(--gray-200);border-radius:8px;padding:16px;margin-bottom:14px;background:var(--gray-50)';
+  div.innerHTML = `
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
+      <strong style="font-size:14px;color:var(--gray-700)">Output Port #${id}</strong>
+      <button class="btn btn-sm btn-outline" style="color:var(--red)" onclick="document.getElementById('output-${id}').remove();updatePreview()">✕ Remove</button>
+    </div>
+    <div class="form-row">
+      <div class="form-group"><label>Output ID <span class="req">*</span></label><input type="text" id="output-${id}-id" value="${d.id}" placeholder="output_rest_api"></div>
+      <div class="form-group"><label>Output Name <span class="req">*</span></label><input type="text" id="output-${id}-name" value="${d.name}" placeholder="REST API"></div>
+    </div>
+    <div class="form-row">
+      <div class="form-group"><label>Model ID <span class="req">*</span></label><input type="text" id="output-${id}-modelId" value="${d.modelId}" placeholder="order_model"></div>
+      <div class="form-group"><label>Description</label><input type="text" id="output-${id}-desc" value="${d.description || ''}" placeholder="Describe this output port..."></div>
+    </div>
+  `;
+  container.appendChild(div);
+  listenForChanges();
+}
+
+// ===================================================================
+// BUILD CONTRACT OBJECT
+// ===================================================================
+function buildContract() {
+  const contract = {
+    dataProductSpecification: "1.0.0",
+    info: {
+      id: document.getElementById('info-id').value.trim(),
+      title: document.getElementById('info-title').value.trim(),
+      version: document.getElementById('info-version').value.trim(),
+      description: document.getElementById('info-description').value.trim() || null,
+      owner: document.getElementById('info-owner').value.trim() || null
+    },
+    models: [],
+    outputs: []
+  };
+
+  // Collect models
+  document.querySelectorAll('[id^="model-"][id$="-id"]').forEach(el => {
+    const mid = el.id.match(/model-(\d+)-id/);
+    if (!mid) return;
+    const n = mid[1];
+    const fields = [];
+    document.querySelectorAll('#model-' + n + '-fields tbody tr').forEach(tr => {
+      const inputs = tr.querySelectorAll('input, select');
+      if (inputs.length >= 5) {
+        fields.push({
+          name: inputs[0].value.trim(),
+          type: inputs[1].value,
+          required: inputs[2].checked,
+          pii: inputs[3].checked,
+          description: inputs[4].value.trim() || null
+        });
+      }
+    });
+    contract.models.push({
+      id: el.value.trim(),
+      name: document.getElementById('model-' + n + '-name').value.trim(),
+      description: document.getElementById('model-' + n + '-desc').value.trim() || null,
+      fields: fields
+    });
+  });
+
+  // Collect outputs
+  document.querySelectorAll('[id^="output-"][id$="-id"]').forEach(el => {
+    const oid = el.id.match(/output-(\d+)-id/);
+    if (!oid) return;
+    const n = oid[1];
+    contract.outputs.push({
+      id: el.value.trim(),
+      name: document.getElementById('output-' + n + '-name').value.trim(),
+      modelId: document.getElementById('output-' + n + '-modelId').value.trim(),
+      description: document.getElementById('output-' + n + '-desc').value.trim() || null
+    });
+  });
+
+  // SLA & compliance (extended metadata, sent alongside)
+  const selectedRegs = [];
+  document.querySelectorAll('#compliance-chips .chip.selected').forEach(c => selectedRegs.push(c.dataset.reg));
+
+  contract._meta = {
+    sla: {
+      availability: document.getElementById('sla-availability').value.trim() || null,
+      latency_ms: document.getElementById('sla-latency').value.trim() ? parseInt(document.getElementById('sla-latency').value) : null,
+      freshness: document.getElementById('sla-freshness').value.trim() || null,
+      retention: document.getElementById('sla-retention').value.trim() || null
+    },
+    quality: {
+      completeness: document.getElementById('quality-completeness').value.trim() ? parseInt(document.getElementById('quality-completeness').value) : null,
+      uniqueness: document.getElementById('quality-uniqueness').value.trim() || null
+    },
+    compliance: selectedRegs
+  };
+
+  return contract;
+}
+
+// ===================================================================
+// PREVIEW
+// ===================================================================
+function updatePreview() {
+  const contract = buildContract();
+  const previewEl = document.getElementById('preview-content');
+
+  if (activePreviewTab === 'json') {
+    // Clean copy without _meta for display
+    const display = { ...contract };
+    delete display._meta;
+    if (contract._meta && (contract._meta.sla.availability || contract._meta.compliance.length)) {
+      display.servicelevels = contract._meta.sla;
+      display.quality = contract._meta.quality;
+      display.compliance = contract._meta.compliance;
+    }
+    previewEl.textContent = JSON.stringify(display, null, 2);
+  } else if (activePreviewTab === 'yaml') {
+    previewEl.textContent = toYamlLike(contract);
+  } else if (activePreviewTab === 'curl') {
+    const body = { ...contract };
+    delete body._meta;
+    previewEl.textContent = `curl -X POST ${API_BASE}/api/v1/contracts \\
+  -H "Content-Type: application/json" \\
+  -d '${JSON.stringify(body, null, 2)}'`;
+  }
+}
+
+function toYamlLike(obj, indent) {
+  indent = indent || 0;
+  let out = '';
+  const pad = '  '.repeat(indent);
+  for (const [k, v] of Object.entries(obj)) {
+    if (k === '_meta') continue;
+    if (v === null || v === undefined) continue;
+    if (Array.isArray(v)) {
+      out += pad + k + ':\n';
+      v.forEach(item => {
+        if (typeof item === 'object') {
+          out += pad + '  - \n' + toYamlLike(item, indent + 2);
+        } else {
+          out += pad + '  - ' + item + '\n';
+        }
+      });
+    } else if (typeof v === 'object') {
+      out += pad + k + ':\n' + toYamlLike(v, indent + 1);
+    } else {
+      out += pad + k + ': ' + v + '\n';
+    }
+  }
+  return out;
+}
+
+function switchPreviewTab(tab, el) {
+  activePreviewTab = tab;
+  document.querySelectorAll('.preview-tab').forEach(t => t.classList.remove('active'));
+  el.classList.add('active');
+  updatePreview();
+}
+
+function listenForChanges() {
+  document.querySelectorAll('.main input, .main select, .main textarea').forEach(el => {
+    el.removeEventListener('input', updatePreview);
+    el.addEventListener('input', updatePreview);
+  });
+}
+
+// ===================================================================
+// VALIDATION
+// ===================================================================
+function runValidation() {
+  const contract = buildContract();
+  const results = [];
+
+  // Required: dataProductSpecification
+  results.push({ pass: true, msg: 'dataProductSpecification is set to "1.0.0"' });
+
+  // Info checks
+  if (contract.info.id) results.push({ pass: true, msg: 'info.id is defined' });
+  else results.push({ pass: false, msg: 'info.id is missing (required)' });
+
+  if (contract.info.title) results.push({ pass: true, msg: 'info.title is defined' });
+  else results.push({ pass: false, msg: 'info.title is missing (required)' });
+
+  if (contract.info.version) results.push({ pass: true, msg: 'info.version is defined' });
+  else results.push({ pass: false, msg: 'info.version is missing (required)' });
+
+  // Models
+  if (contract.models.length > 0) {
+    results.push({ pass: true, msg: contract.models.length + ' model(s) defined' });
+    contract.models.forEach((m, i) => {
+      if (!m.id) results.push({ pass: false, msg: 'models[' + i + '].id is missing' });
+      if (!m.name) results.push({ pass: false, msg: 'models[' + i + '].name is missing' });
+      if (!m.fields || m.fields.length === 0) results.push({ pass: false, msg: 'models[' + i + '] has no fields' });
+      else {
+        m.fields.forEach((f, fi) => {
+          if (!f.name) results.push({ pass: false, msg: 'models[' + i + '].fields[' + fi + '].name is missing' });
+          if (!f.type) results.push({ pass: false, msg: 'models[' + i + '].fields[' + fi + '].type is missing' });
+        });
+        const validFields = m.fields.filter(f => f.name && f.type);
+        results.push({ pass: true, msg: 'models[' + i + '] has ' + validFields.length + ' valid field(s)' });
+      }
+    });
+  } else {
+    results.push({ pass: false, msg: 'No models defined (at least one required)' });
+  }
+
+  // Warnings
+  if (!contract.info.description) results.push({ warn: true, msg: 'info.description is empty (recommended)' });
+  if (contract.outputs.length === 0) results.push({ warn: true, msg: 'No output ports defined (optional but recommended)' });
+
+  const panel = document.getElementById('validation-results');
+  panel.innerHTML = '<h4 style="font-size:14px;margin-bottom:10px;color:var(--gray-700)">Validation Results</h4>' +
+    results.map(r => {
+      if (r.warn) return '<div class="val-item"><span class="val-icon val-warn">⚠️</span><span>' + r.msg + '</span></div>';
+      return '<div class="val-item"><span class="val-icon ' + (r.pass ? 'val-pass' : 'val-fail') + '">' + (r.pass ? '✅' : '❌') + '</span><span>' + r.msg + '</span></div>';
+    }).join('');
+
+  const hasErrors = results.some(r => r.pass === false);
+  document.getElementById('btn-submit').disabled = hasErrors;
+  document.getElementById('btn-submit').style.opacity = hasErrors ? '0.5' : '1';
+}
+
+// ===================================================================
+// SUBMIT / VALIDATE API CALLS
+// ===================================================================
+async function submitContract() {
+  const contract = buildContract();
+  const body = { ...contract };
+  delete body._meta;
+
+  try {
+    document.getElementById('btn-submit').textContent = '⏳ Publishing...';
+    document.getElementById('btn-submit').disabled = true;
+
+    const res = await fetch(API_BASE + '/api/v1/contracts', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body)
+    });
+    const data = await res.json();
+
+    if (data.success) {
+      showToast('success', '🎉 Contract published successfully! ID: ' + (data.contract?.contractId || 'N/A'));
+    } else {
+      showToast('error', 'Validation errors: ' + (data.errors || []).join(', '));
+    }
+  } catch (err) {
+    showToast('error', 'Network error: ' + err.message + '. Is the platform running on localhost:3000?');
+  } finally {
+    document.getElementById('btn-submit').textContent = '🚀 Publish Contract';
+    document.getElementById('btn-submit').disabled = false;
+  }
+}
+
+async function validateOnly() {
+  const contract = buildContract();
+  const body = { ...contract };
+  delete body._meta;
+
+  try {
+    const res = await fetch(API_BASE + '/api/v1/contracts/validate', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body)
+    });
+    const data = await res.json();
+
+    if (data.success) {
+      showToast('success', '✅ Contract passed server-side validation!');
+    } else {
+      showToast('error', 'Server validation errors: ' + (data.errors || []).join(', '));
+    }
+  } catch (err) {
+    showToast('info', 'Could not reach API. Running client-side validation only.');
+    runValidation();
+  }
+}
+
+async function validatePasted() {
+  const raw = document.getElementById('validate-json').value.trim();
+  const panel = document.getElementById('validate-results');
+  try {
+    const obj = JSON.parse(raw);
+    const res = await fetch(API_BASE + '/api/v1/contracts/validate', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(obj)
+    });
+    const data = await res.json();
+    if (data.success) {
+      panel.innerHTML = '<div class="val-item"><span class="val-icon val-pass">✅</span><span>Contract is valid!</span></div>' +
+        (data.warnings || []).map(w => '<div class="val-item"><span class="val-icon val-warn">⚠️</span><span>' + w + '</span></div>').join('');
+    } else {
+      panel.innerHTML = (data.errors || []).map(e => '<div class="val-item"><span class="val-icon val-fail">❌</span><span>' + e + '</span></div>').join('');
+    }
+  } catch (err) {
+    panel.innerHTML = '<div class="val-item"><span class="val-icon val-fail">❌</span><span>Invalid JSON or network error: ' + err.message + '</span></div>';
+  }
+}
+
+// ===================================================================
+// LOAD CONTRACTS LIST
+// ===================================================================
+async function loadContracts() {
+  const el = document.getElementById('contracts-list');
+  el.innerHTML = '<em>Loading...</em>';
+  try {
+    const res = await fetch(API_BASE + '/api/v1/contracts');
+    const data = await res.json();
+    if (data.success && data.contracts && data.contracts.length > 0) {
+      let html = '<table class="fields-table"><thead><tr><th>ID</th><th>Title</th><th>Version</th><th>Status</th><th>Created</th></tr></thead><tbody>';
+      data.contracts.forEach(c => {
+        html += '<tr><td>' + (c.contract_id||c.id) + '</td><td>' + (c.title||'-') + '</td><td>' + (c.version||'-') + '</td><td>' + (c.status||'-') + '</td><td>' + (c.created_at ? new Date(c.created_at).toLocaleString() : '-') + '</td></tr>';
+      });
+      html += '</tbody></table>';
+      el.innerHTML = html;
+    } else {
+      el.innerHTML = '<em>No contracts found. Create one using the builder!</em>';
+    }
+  } catch (err) {
+    el.innerHTML = '<em style="color:var(--red)">Could not connect to API: ' + err.message + '</em>';
+  }
+}
+
+// ===================================================================
+// TEMPLATES
+// ===================================================================
+function loadTemplate(name) {
+  // Reset
+  modelCounter = 0; outputCounter = 0;
+  document.getElementById('models-container').innerHTML = '';
+  document.getElementById('outputs-container').innerHTML = '';
+  document.querySelectorAll('#compliance-chips .chip').forEach(c => c.classList.remove('selected'));
+
+  if (name === 'orders') {
+    document.getElementById('info-id').value = 'urn:datacontract:orders-v1';
+    document.getElementById('info-title').value = 'Orders Data Contract';
+    document.getElementById('info-version').value = '1.0.0';
+    document.getElementById('info-owner').value = 'DataEngineering';
+    document.getElementById('info-description').value = 'Master contract for order data across all regions';
+    document.getElementById('sla-availability').value = '99.99';
+    document.getElementById('sla-latency').value = '50';
+    document.getElementById('sla-freshness').value = '24h';
+    document.getElementById('sla-retention').value = '7 years';
+    document.getElementById('quality-completeness').value = '99';
+    document.getElementById('quality-uniqueness').value = 'orderId';
+    addModel({ id: 'order_model', name: 'Order', description: 'Customer order record', fields: [
+      { name: 'orderId', type: 'string', required: true, pii: false, description: 'Unique order identifier' },
+      { name: 'customerId', type: 'string', required: true, pii: true, description: 'Customer unique identifier' },
+      { name: 'email', type: 'string', required: false, pii: true, description: 'Customer email address' },
+      { name: 'amount', type: 'number', required: true, pii: false, description: 'Order total amount' },
+      { name: 'createdAt', type: 'timestamp', required: true, pii: false, description: 'Order creation timestamp' }
+    ]});
+    addOutput({ id: 'output_rest', name: 'REST API', modelId: 'order_model', description: 'REST endpoint for order data' });
+    document.querySelectorAll('#compliance-chips .chip').forEach(c => { if(['GDPR','CCPA'].includes(c.dataset.reg)) c.classList.add('selected'); });
+  } else if (name === 'customer') {
+    document.getElementById('info-id').value = 'urn:datacontract:customer-profiles-v1';
+    document.getElementById('info-title').value = 'Customer Profiles Contract';
+    document.getElementById('info-version').value = '1.0.0';
+    document.getElementById('info-owner').value = 'CustomerPlatform';
+    document.getElementById('info-description').value = 'Contract governing customer profile and identity data';
+    addModel({ id: 'customer_model', name: 'CustomerProfile', description: 'Core customer profile', fields: [
+      { name: 'customerId', type: 'string', required: true, pii: true, description: 'Primary customer identifier' },
+      { name: 'firstName', type: 'string', required: true, pii: true, description: 'First name' },
+      { name: 'lastName', type: 'string', required: true, pii: true, description: 'Last name' },
+      { name: 'email', type: 'string', required: true, pii: true, description: 'Email address' },
+      { name: 'region', type: 'string', required: true, pii: false, description: 'Geographic region code' },
+      { name: 'createdAt', type: 'timestamp', required: true, pii: false, description: 'Account creation date' }
+    ]});
+    document.querySelectorAll('#compliance-chips .chip').forEach(c => { if(['GDPR','CCPA','DPDPA'].includes(c.dataset.reg)) c.classList.add('selected'); });
+  } else if (name === 'transactions') {
+    document.getElementById('info-id').value = 'urn:datacontract:transactions-v1';
+    document.getElementById('info-title').value = 'Financial Transactions Contract';
+    document.getElementById('info-version').value = '1.0.0';
+    document.getElementById('info-owner').value = 'FinanceTeam';
+    document.getElementById('info-description').value = 'Production contract for financial transaction records';
+    document.getElementById('sla-availability').value = '99.95';
+    document.getElementById('sla-latency').value = '100';
+    addModel({ id: 'txn_model', name: 'Transaction', description: 'Financial transaction record', fields: [
+      { name: 'transactionId', type: 'string', required: true, pii: false, description: 'Unique transaction ID' },
+      { name: 'accountId', type: 'string', required: true, pii: true, description: 'Account identifier' },
+      { name: 'amount', type: 'number', required: true, pii: false, description: 'Transaction amount' },
+      { name: 'currency', type: 'string', required: true, pii: false, description: 'ISO 4217 currency code' },
+      { name: 'timestamp', type: 'timestamp', required: true, pii: false, description: 'Transaction timestamp' },
+      { name: 'status', type: 'string', required: true, pii: false, description: 'Transaction status' }
+    ]});
+    document.querySelectorAll('#compliance-chips .chip').forEach(c => c.classList.add('selected'));
+  } else {
+    document.getElementById('info-id').value = '';
+    document.getElementById('info-title').value = '';
+    document.getElementById('info-version').value = '1.0.0';
+    document.getElementById('info-owner').value = '';
+    document.getElementById('info-description').value = '';
+    document.getElementById('sla-availability').value = '';
+    document.getElementById('sla-latency').value = '';
+    document.getElementById('sla-freshness').value = '';
+    document.getElementById('sla-retention').value = '';
+    document.getElementById('quality-completeness').value = '';
+    document.getElementById('quality-uniqueness').value = '';
+    addModel();
+  }
+
+  showSection('create');
+  document.querySelectorAll('.sidebar .nav-item').forEach(n => n.classList.remove('active'));
+  document.querySelector('.sidebar .nav-item').classList.add('active');
+  goToStep(1);
+  updatePreview();
+}
+
+// ===================================================================
+// COMPLIANCE CHIPS
+// ===================================================================
+function toggleChip(el) { el.classList.toggle('selected'); updatePreview(); }
+
+// ===================================================================
+// TOAST
+// ===================================================================
+function showToast(type, msg) {
+  const c = document.getElementById('toast-container');
+  const t = document.createElement('div');
+  t.className = 'toast toast-' + type;
+  t.innerHTML = msg;
+  c.appendChild(t);
+  setTimeout(() => { t.style.opacity = '0'; setTimeout(() => t.remove(), 300); }, 5000);
+}
+
+// ===================================================================
+// HEALTH CHECK
+// ===================================================================
+async function checkHealth() {
+  const dots = { api: 'dot-api', opa: 'dot-opa', registry: 'dot-registry', db: 'dot-db' };
+  try {
+    const res = await fetch(API_BASE + '/status');
+    const data = await res.json();
+    document.getElementById(dots.api).className = 'status-dot ok';
+    document.getElementById(dots.db).className = 'status-dot ' + (data.services?.database?.status === 'healthy' ? 'ok' : 'err');
+    document.getElementById(dots.opa).className = 'status-dot ' + (data.services?.opa?.healthy ? 'ok' : 'err');
+    document.getElementById(dots.registry).className = 'status-dot ' + (data.services?.registry?.healthy ? 'ok' : 'err');
+  } catch {
+    Object.values(dots).forEach(id => document.getElementById(id).className = 'status-dot err');
+  }
+}
+
+// ===================================================================
+// INIT
+// ===================================================================
+document.addEventListener('DOMContentLoaded', () => {
+  addModel();
+  listenForChanges();
+  updatePreview();
+  checkHealth();
+  setInterval(checkHealth, 30000);
+});
+</script>
+</body>
+</html>
