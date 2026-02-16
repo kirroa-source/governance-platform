@@ -1,0 +1,80 @@
+dataContractVersion: 1.0.0
+id: urn:datacontract:orders-v1
+info:
+  title: Orders Data Contract
+  version: 2026.01.22
+  owner: DataEngineering
+  ownerEmail: data-eng@company.com
+  description: Master contract for order data across all regions
+  
+servers:
+  - url: http://api.company.com/orders
+    type: rest
+    schemaRegistry: http://apicurio-registry:8080
+
+models:
+  Order:
+    description: Customer order record
+    schemaRegistryRef: apicurio-orders-event-v1
+    fields:
+      orderId:
+        type: string
+        description: Unique order identifier
+        required: true
+        pii: false
+      customerId:
+        type: string
+        description: Customer unique identifier
+        required: true
+        pii: true
+      email:
+        type: string
+        description: Customer email address
+        required: false
+        pii: true
+      amount:
+        type: decimal
+        description: Order total amount
+        required: true
+        pii: false
+      createdAt:
+        type: timestamp
+        description: Order creation timestamp
+        required: true
+        pii: false
+
+servicelevels:
+  availability: "99.99"
+  latency: 50ms
+  freshness: 24h
+  retention: 7 years
+
+quality:
+  completeness: 99
+  uniqueness: orderId
+
+compliance:
+  gdpr:
+    applicable: true
+    dataSubjects: EU citizens
+    rightToAccess: true
+    rightToDelete: true
+  ccpa:
+    applicable: true
+    dataSubjects: California residents
+    rightToOptOut: true
+    rightToDelete: true
+  pipl:
+    applicable: true
+    dataSubjects: Chinese citizens
+    dataLocalization: "CN region only"
+
+transformations:
+  masking:
+    - field: customerId
+      method: pseudonymize
+    - field: email
+      method: hash
+  aggregation:
+    - field: amount
+      granularity: daily

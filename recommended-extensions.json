@@ -1,0 +1,42 @@
+[
+  {
+    "name": "Prettier",
+    "id": "esbenp.prettier-vscode",
+    "description": "Code formatter (JavaScript, JSON, Markdown)"
+  },
+  {
+    "name": "Docker",
+    "id": "ms-azuretools.vscode-docker",
+    "description": "Docker management and debugging"
+  },
+  {
+    "name": "REST Client",
+    "id": "humao.rest-client",
+    "description": "Test API endpoints directly from VS Code"
+  },
+  {
+    "name": "GitLens",
+    "id": "eamodio.gitlens",
+    "description": "Enhanced Git capabilities"
+  },
+  {
+    "name": "PostgreSQL Explorer",
+    "id": "cweijan.vscode-postgresql",
+    "description": "Browse and query PostgreSQL databases"
+  },
+  {
+    "name": "OPA/Rego",
+    "id": "styra.vscode-opa",
+    "description": "Syntax highlighting for Rego policies"
+  },
+  {
+    "name": "Thunder Client",
+    "id": "rangav.vscode-thunder-client",
+    "description": "Alternative REST API client (like Postman)"
+  },
+  {
+    "name": "Node.js Extension Pack",
+    "id": "waderyan.nodejs-extension-pack",
+    "description": "Popular extensions for Node.js development"
+  }
+]

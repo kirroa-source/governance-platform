@@ -1,0 +1,51 @@
+{
+  "name": "policy-governance-platform",
+  "version": "1.0.0",
+  "description": "Policy-Driven Data Governance Platform with OPA, Data Contracts, and Audit Trail",
+  "main": "src/server.js",
+  "scripts": {
+    "start": "node src/server.js",
+    "dev": "nodemon src/server.js",
+    "test": "jest",
+    "db:init": "node src/db/init.js",
+    "docker:build": "docker build -t governance-platform:latest .",
+    "docker:up": "docker-compose up -d",
+    "docker:down": "docker-compose down",
+    "docker:logs": "docker-compose logs -f governance-api",
+    "docker:reset": "docker-compose down -v && docker-compose up -d",
+    "publish:contracts": "node scripts/publish-contract.js"
+
+  },
+  "keywords": [
+    "data-governance",
+    "policy",
+    "compliance",
+    "opa",
+    "contracts"
+  ],
+  "author": "Data Governance Team",
+  "license": "MIT",
+  "dependencies": {
+    "axios": "^1.6.0",
+    "bcryptjs": "^2.4.3",
+    "body-parser": "^1.20.2",
+    "cors": "^2.8.5",
+    "dotenv": "^16.3.1",
+    "ejs": "^3.1.9",
+    "express": "^4.18.2",
+    "express-json-validator-middleware": "^2.0.0",
+    "helmet": "^7.1.0",
+    "joi": "^17.11.0",
+    "jsonwebtoken": "^9.0.2",
+    "pg": "^8.10.0",
+    "sequelize": "^6.35.1",
+    "uuid": "^9.0.1",
+    "winston": "^3.11.0"
+  },
+  "devDependencies": {
+    "jest": "^29.7.0",
+    "js-yaml": "^4.1.1",
+    "nodemon": "^3.0.2",
+    "supertest": "^6.3.3"
+  }
+}

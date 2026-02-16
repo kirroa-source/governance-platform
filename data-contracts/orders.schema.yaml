@@ -1,0 +1,46 @@
+asyncapi: 2.6.0
+info:
+  title: Orders Events
+  version: 1.0.0
+  description: Order events for the data contract
+
+channels:
+  orders/events:
+    description: Order events channel
+    publish:
+      message:
+        $ref: '#/components/messages/OrderEvent'
+
+components:
+  messages:
+    OrderEvent:
+      contentType: application/json
+      payload:
+        $ref: '#/components/schemas/Order'
+
+  schemas:
+    Order:
+      type: object
+      required:
+        - orderId
+        - customerId
+        - amount
+        - createdAt
+      properties:
+        orderId:
+          type: string
+          description: Unique order identifier
+        customerId:
+          type: string
+          description: Customer unique identifier (PII)
+        email:
+          type: string
+          description: Customer email address (PII)
+        amount:
+          type: number
+          format: decimal
+          description: Order total amount
+        createdAt:
+          type: string
+          format: date-time
+          description: Order creation timestamp
