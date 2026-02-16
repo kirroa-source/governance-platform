@@ -30,11 +30,7 @@ app.use((req, res, next) => {
 // ============================================================================
 
 const pool = new Pool({
-  user: process.env.DB_USER || 'postgres',
-  host: process.env.DB_HOST || 'postgres',
-  database: process.env.DB_NAME || 'governance_db',
-  password: process.env.DB_PASSWORD || 'postgres',
-  port: process.env.DB_PORT || 5432,
+  connectionString: process.env.DATABASE_URL || 'postgresql://governance:governance123@postgres:5432/governance_db',
   max: 20,
   idleTimeoutMillis: 30000,
   connectionTimeoutMillis: 2000,

@@ -49,7 +49,7 @@ services:
       - governance-network
     restart: unless-stopped
 
-  # Main Governance API & Dashboard - Node.js backend
+  # Main Governance API & Dashboard - Node.js backend 
   governance-api:
     build:
       context: .
@@ -61,7 +61,7 @@ services:
       NODE_ENV: development
       DATABASE_URL: postgresql://governance:governance123@postgres:5432/governance_db
       OPA_URL: http://opa:8181
-      APICURIO_URL: http://apicurio-registry:8080
+      APICURIO_REGISTRY_URL: http://apicurio-registry:8080
       LOG_LEVEL: info
       SECRET_KEY: your-secret-key-change-in-production
     depends_on:
